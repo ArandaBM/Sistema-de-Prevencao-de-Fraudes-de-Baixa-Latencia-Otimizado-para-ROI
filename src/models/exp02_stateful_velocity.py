@@ -17,8 +17,8 @@ from reporter import evaluate_and_report
 
 def load_data():
     """Carrega os datasets de treino e teste."""
-    train = pd.read_csv('data/raw/fraudTrain.csv')
-    test = pd.read_csv('data/raw/fraudTest.csv')
+    train = pd.read_csv('data/raw/fraudTrain.csv', index_col=0)
+    test = pd.read_csv('data/raw/fraudTest.csv', index_col=0)
     return train, test
 
 def prep_data(df: pd.DataFrame) -> pd.DataFrame:
@@ -39,6 +39,9 @@ def prep_data(df: pd.DataFrame) -> pd.DataFrame:
     # Precisamos ordenar pelo número de cartão e tempo para construir as features de estado
     df = df.sort_values(by=['cc_num', 'trans_date_trans_time']).reset_index(drop=True)
     
+    # 1.1 Conversão de Zip Code para String (Para evitar que o CatBoost trate como número)
+    df['zip'] = df['zip'].astype(str)
+
     # --- BLOCO 2: VELOCITY & ANOMALIA ---
     df_time_indexed = df.set_index('trans_date_trans_time')
     grouped = df_time_indexed.groupby('cc_num')['amt']
@@ -116,4 +119,4 @@ def run_experiment_02():
     evaluate_and_report(df_test[target_col], y_probs, df_test['amt'].values, "exp02_stateful_velocity")
 
 if __name__ == "__main__":
-    run_experiment_02()
+    run_experiment_02()

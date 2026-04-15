@@ -24,8 +24,8 @@ from src.models.reporter import evaluate_and_report
 
 def load_data():
     """Carrega os datasets de treino e teste."""
-    train = pd.read_csv('data/raw/fraudTrain.csv')
-    test = pd.read_csv('data/raw/fraudTest.csv')
+    train = pd.read_csv('data/raw/fraudTrain.csv', index_col=0)
+    test = pd.read_csv('data/raw/fraudTest.csv', index_col=0)
     return train, test
 
 def prep_data(df: pd.DataFrame) -> pd.DataFrame:
@@ -78,7 +78,8 @@ def prep_data(df: pd.DataFrame) -> pd.DataFrame:
     cols_to_drop = [
         'trans_num', 'cc_num', 'first', 'last', 'street', 
         'dob', 'trans_date_trans_time', 'unix_time',
-        'lat', 'long', 'merch_lat', 'merch_long'
+        'lat', 'long', 'merch_lat', 'merch_long',
+        'city', 'state', 'zip', 'city_pop'
     ]
     
     return df.drop(columns=cols_to_drop)
@@ -119,4 +120,4 @@ def run_experiment_03():
     evaluate_and_report(df_test[target_col], y_probs, df_test['amt'].values, "exp03_spatial_velocity")
 
 if __name__ == "__main__":
-    run_experiment_03()
+    run_experiment_03()

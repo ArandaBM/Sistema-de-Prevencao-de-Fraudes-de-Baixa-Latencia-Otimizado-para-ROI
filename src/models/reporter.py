@@ -113,4 +113,4 @@ def evaluate_and_report(
         f.write("\n".join(lines))
         
     print(f"[MLOps] Relatório gerado com sucesso em: {report_path}")
-    print(f"[ROI] Valor Líquido Gerado: R$ {net_value:,.2f}")
+    print(f"[ROI] Valor Líquido Gerado: R$ {net_value:,.2f}")

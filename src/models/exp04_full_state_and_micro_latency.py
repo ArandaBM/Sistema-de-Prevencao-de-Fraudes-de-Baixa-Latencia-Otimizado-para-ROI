@@ -16,15 +16,15 @@ import pandas as pd
 import numpy as np
 from catboost import CatBoostClassifier
 
-# Adiciona o diretório raiz ao path para importar utilitários
+# Adicionando o diretório raiz ao path para importar utilitários
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 from src.features.processing import haversine_vectorized
 from src.models.reporter import evaluate_and_report
 
 def load_data():
     """Carrega os datasets de treino e teste."""
-    train = pd.read_csv('data/raw/fraudTrain.csv')
-    test = pd.read_csv('data/raw/fraudTest.csv')
+    train = pd.read_csv('data/raw/fraudTrain.csv', index_col=0)
+    test = pd.read_csv('data/raw/fraudTest.csv', index_col=0)
     return train, test
 
 def prep_data(df: pd.DataFrame) -> pd.DataFrame:
@@ -85,7 +85,8 @@ def prep_data(df: pd.DataFrame) -> pd.DataFrame:
     cols_to_drop = [
         'trans_num', 'cc_num', 'first', 'last', 'street', 
         'dob', 'trans_date_trans_time', 'unix_time',
-        'lat', 'long', 'merch_lat', 'merch_long'
+        'lat', 'long', 'merch_lat', 'merch_long',
+        'city', 'state', 'zip', 'city_pop'
     ]
     
     return df.drop(columns=cols_to_drop)
@@ -125,5 +126,11 @@ def run_experiment_04():
     y_probs = model.predict_proba(df_test[features])[:, 1]
     evaluate_and_report(df_test[target_col], y_probs, df_test['amt'].values, "exp04_full_state_and_micro_latency")
 
+    # 5.2. Salvar o modelo treinado
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    save_path = os.path.normpath(os.path.join(current_dir, "../../models/catboost_sota.cbm"))
+    model.save_model(save_path)
+    print(f"\n[MLOps] Modelo exportado com sucesso para '{save_path}'")
+
 if __name__ == "__main__":
-    run_experiment_04()
+    run_experiment_04()

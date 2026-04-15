@@ -16,8 +16,8 @@ from reporter import evaluate_and_report
 # 1. Carregamento de Dados
 def load_data():
     """Carrega os datasets de treino e teste."""
-    train = pd.read_csv('data/raw/fraudTrain.csv')
-    test = pd.read_csv('data/raw/fraudTest.csv')
+    train = pd.read_csv('data/raw/fraudTrain.csv', index_col=0)
+    test = pd.read_csv('data/raw/fraudTest.csv', index_col=0)
     return train, test
 
 def prep_data(df: pd.DataFrame) -> pd.DataFrame:
@@ -34,6 +34,9 @@ def prep_data(df: pd.DataFrame) -> pd.DataFrame:
     df['trans_date_trans_time'] = pd.to_datetime(df['trans_date_trans_time'])
     df = df.sort_values('trans_date_trans_time').reset_index(drop=True)
     
+    # 1.1 Conversão de Zip Code para String (Para evitar que o CatBoost trate como número)
+    df['zip'] = df['zip'].astype(str)
+
     # 2. EXPURGO DE TOXIDADE (Anti-Leakage e Compliance)
     # unix_time é perigoso no baseline pois é estritamente crescente (causa drift)
     cols_to_drop = [
@@ -94,4 +97,4 @@ def run_experiment_01():
     evaluate_and_report(y_test, y_probs, amt_test, "exp01_baseline_stateless")
 
 if __name__ == "__main__":
-    run_experiment_01()
+    run_experiment_01()
