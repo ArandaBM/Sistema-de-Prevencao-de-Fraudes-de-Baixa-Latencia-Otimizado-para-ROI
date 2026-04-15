@@ -1,0 +1,23 @@
+=================================================
+RELATÓRIO EXECUTIVO DE IA: exp04_full_state_and_micro_latency
+Data da Execução: 2026-04-14 17:49:17
+=================================================
+
+--- 1. PERFORMANCE ESTATÍSTICA ---
+ROC-AUC: 0.9984
+PR-AUC:  0.9409
+
+--- 2. DEMONSTRATIVO DE RESULTADOS (DRE) ---
+Limiar de Decisão Ideal: 0.89 (89%)
+Cenário Sem Modelo (Total de Fraudes Reais): R$ 1,133,324.68
+--------------------------------------------------
+A RECEITA (SUCESSO DA MÁQUINA):
+[+] Fraudes Interceptadas (TP): 1957 transações
+[+] Dinheiro Salvo: R$ 1,098,924.81
+--------------------------------------------------
+AS DESPESAS (CUSTO TOTAL DA OPERAÇÃO):
+[-] Fraudes que Passaram (FN): 188 transações (R$ 34,399.87)
+[-] Clientes Bons Bloqueados (FP): 426 clientes (R$ 21,300.00)
+CUSTO MÍNIMO ATINGIDO: R$ 55,699.87
+--------------------------------------------------
+VALOR LÍQUIDO GERADO PELO MODELO: R$ 1,077,624.81
