@@ -9,7 +9,7 @@
 </div>
 
 ---
-
+```mermaid
 graph LR
     classDef input fill:#2d3436,stroke:#dfe6e9,stroke-width:2px,color:#fff;
     classDef api fill:#0984e3,stroke:#74b9ff,stroke-width:2px,color:#fff;
