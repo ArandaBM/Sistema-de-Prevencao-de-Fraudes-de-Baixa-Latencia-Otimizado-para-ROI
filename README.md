@@ -34,6 +34,7 @@ graph LR
     F -->|Risco >= 0.88| H([BLOCK<br>~11ms SLA]):::block
     
     F -.->|Assíncrono| I[(SQLite DB<br>production_logs)]:::db
+```
 
 ## 💼 1. O Desafio de Negócio (DRE)
 
