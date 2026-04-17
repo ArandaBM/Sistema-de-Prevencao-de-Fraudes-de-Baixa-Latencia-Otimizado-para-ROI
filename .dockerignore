@@ -1,0 +1,25 @@
+# Git / Documentação
+.git/
+.gitignore
+README.md
+
+# Virtual Environments
+venv/
+.venv/
+.conda/
+
+# Python Cache
+**/__pycache__/
+*.pyc
+*.pyo
+
+# Dados Temporais e Locais
+data/
+*.csv
+*.db
+
+# Artefatos do Cientista de Dados (Não vão para a API)
+src/experiments/
+docs/
+requirements-dev.txt
+catboost_info/

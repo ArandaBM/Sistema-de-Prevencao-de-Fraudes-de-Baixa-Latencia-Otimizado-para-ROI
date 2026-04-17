@@ -1,0 +1,15 @@
+# Herda todas as bibliotecas da API
+-r requirements.txt
+
+# Manipulação de Dados e Experimentação
+pandas
+scikit-learn
+
+# Visualização de Dados
+matplotlib
+seaborn
+
+# Automação e Notebooks
+jupyter
+kagglehub
+requests

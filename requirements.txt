@@ -1,24 +1,5 @@
-# Core Data Science
-pandas
+fastapi
+uvicorn
+pydantic
 numpy
-scikit-learn
-scipy
-
-# Machine Learning & Fraud Detection Algorithms
-xgboost
-lightgbm
 catboost
-imbalanced-learn
-
-# Visualization
-matplotlib
-seaborn
-plotly
-
-# Jupyter environment
-notebook
-jupyterlab
-
-# Misc
-tqdm
-pyarrow

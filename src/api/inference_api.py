@@ -2,19 +2,19 @@
 API de Inferência - Motor de Prevenção a Fraudes SOTA (Baixa Latência)
 ----------------------------------------------------------------------
 Este módulo implementa o serviço de inferência em tempo real utilizando o framework FastAPI. 
-Projetado para ambientes de produção de alta volumetria, ele incorpora padrões arquiteturais 
-críticos de MLOps:
+Projetei esta porta de entrada para suportar ambientes de produção de alta volumetria, incorporando 
+os seguintes padrões críticos de MLOps que idealizei:
 
-1. **In-Memory State Management**: Mantém o estado transacional recente do usuário e do 
-   lojista em memória (RAM) para calcular features de velocidade em tempo constante O(1).
-2. **Carregamento Antecipado (Warm Start)**: O modelo CatBoost é injetado na memória na 
-   inicialização do processo, eliminando a latência de I/O em tempo de execução de predição.
-3. **Engenharia de Atributos Real-Time**: Executa cálculos geoespaciais (Haversine) e 
-   agrupamentos temporais (micro-latência) no mesmo delta de tempo da transação.
-4. **Alinhamento Estrito de Tensors**: Assegura que o pipeline alimente o modelo EXATAMENTE 
-   com o mesmo schema de features treinado, mitigando data drift ou desalinhamento esquemático.
+1. **In-Memory State Management**: Construí um gerenciador de estado que mantém as informações do usuário e do 
+   lojista na memória RAM, permitindo calcular features de velocidade em tempo estrito O(1).
+2. **Carregamento Antecipado (Warm Start)**: Estruturei a API para injetar o CatBoost na memória logo na 
+   inicialização do processo, expurgando de vez a latência de I/O em tempo de execução.
+3. **Engenharia de Atributos Real-Time**: Criei gatilhos que calculam matemática espacial (Haversine) e 
+   agrupamentos temporais agressivos (micro-latência) no exato milissegundo em que a transação bate na URL.
+4. **Alinhamento Estrito de Tensors**: Assegurei que meu pipeline alimente o modelo EXATAMENTE 
+   com o mesmo vetor treinado no laboratório, mitigando Data Drift desapercebido.
 
-Autor: Bruno (Desenvolvido para compor Arquitetura de Portfólio de Engenharia de ML)
+Autor: Bruno (Desenvolvido inteiramente para meu Portfólio de Engenharia de ML)
 """
 
 from fastapi import FastAPI, HTTPException
@@ -22,6 +22,34 @@ from pydantic import BaseModel, Field
 from datetime import datetime
 import numpy as np
 from catboost import CatBoostClassifier
+import sqlite3
+import os
+
+# =====================================================================
+# BANCO DE DADOS DE PRODUÇÃO (Feedback Loop para Retreinamento)
+# =====================================================================
+DB_FILE = "production_logs.db"
+
+def init_db():
+    # Cria o banco e a tabela se não existirem
+    with sqlite3.connect(DB_FILE) as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS fraud_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp TEXT,
+                cc_num TEXT,
+                merchant TEXT,
+                amt REAL,
+                decision TEXT,
+                fraud_probability REAL,
+                distance_km REAL,
+                micro_latency REAL
+            )
+        ''')
+        conn.commit()
+
+init_db()
 
 # Inicialização da API contendo metadados autogerados no Swagger (/docs)
 app = FastAPI(
@@ -61,8 +89,8 @@ merchant_history = {}      # Mapeia { 'merchant': [datetime, ...] } para detecta
 # =====================================================================
 class TransactionRequest(BaseModel):
     """
-    Contrato de dados da API. 
-    A Pydantic garante validação de tipos de Rust em nano-segundos.
+    Contrato de dados que estruturei para a API. 
+    Optei pelo Pydantic para me garantir validação de tipos em nano-segundos (core em Rust).
     """
     cc_num: str = Field(...,scription="Hash/Número do cartão transacionado.")
     merchant: str = Field(..., description="ID ou Razão Social do Lojista.")
@@ -82,8 +110,8 @@ class TransactionRequest(BaseModel):
 # =====================================================================
 def haversine(lat1, lon1, lat2, lon2):
     """
-    Calcula a distância ortodrômica entre as coordenadas do merchant e o billing client.
-    Essencial para captar anomalias espaciais (Ex: "Viagem impossível em 5 minutos").
+    Minha função para o cálculo da distância ortodrômica entre merchant e billing client.
+    Implementei isso na borda para captar anomalias espaciais clássicas (Ex: "Viagem impossível em 5 minutos").
     """
     lat1, lon1, lat2, lon2 = map(np.radians, [lat1, lon1, lat2, lon2])
     a = np.sin((lat2 - lat1)/2.0)**2 + np.cos(lat1) * np.cos(lat2) * np.sin((lon2 - lon1)/2.0)**2
@@ -94,8 +122,8 @@ def haversine(lat1, lon1, lat2, lon2):
 # =====================================================================
 def extract_realtime_features(txn: TransactionRequest):
     """
-    Corrente Sanguínea Pipeline MLOps. Esta função consome o estado online global (memória RAM) 
-    para calcular vetores agregados e séries temporais na borda.
+    Corrente Sanguínea do meu Pipeline de MLOps. Construí esta função para consumir 
+    o estado online e calcular vetores agregados diretamente na ponta, sem depender de banco de dados.
     
     Args:
         txn (TransactionRequest): O payload em tempo real desserializado da requisição POST.
@@ -175,8 +203,8 @@ def extract_realtime_features(txn: TransactionRequest):
 @app.post("/predict", summary="In-Memory Scoring Engine", tags=["Inference"])
 async def predict_fraud(txn: TransactionRequest):
     """
-    Endpoint principal para aprovação ou declínio instantâneo de transações.
-    Recebe um JSON serializado do gateway de pagamentos/adquirente.
+    Meu endpoint principal, programado para decidir instantaneamente o destino da transação.
+    Ao receber o JSON do adquirente, a esteira ocorre na seguinte ordem:
     
     Workflows:
     1. Instancia Atributos Dinâmicos usando o RAM Cache.
@@ -193,6 +221,25 @@ async def predict_fraud(txn: TransactionRequest):
         # Regra de Negócio (Limiar estabelecido baseado na curva Precision-Recall do ROI DRE)
         decision = "BLOCK" if prob_fraud >= BUSINESS_THRESHOLD else "APPROVE"
         
+        # --- Salva no banco de dados para retreinamento (Feedback Loop) ---
+        with sqlite3.connect(DB_FILE) as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT INTO fraud_logs 
+                (timestamp, cc_num, merchant, amt, decision, fraud_probability, distance_km, micro_latency)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                datetime.now().isoformat(),
+                txn.cc_num,
+                txn.merchant,
+                txn.amt,
+                decision,
+                round(prob_fraud, 4),
+                round(feature_vector[EXPECTED_FEATURES.index('distance_km')], 2),
+                feature_vector[EXPECTED_FEATURES.index('time_since_last_trans')]
+            ))
+            conn.commit()
+
         return {
             "status": decision,
             "fraud_probability": round(prob_fraud, 4),

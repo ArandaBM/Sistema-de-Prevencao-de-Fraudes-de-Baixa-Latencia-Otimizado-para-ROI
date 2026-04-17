@@ -1,0 +1,24 @@
+=================================================
+RELATÓRIO EXECUTIVO DE IA: EXP03_SPATIAL_VELOCITY
+Data da Execução: 2026-04-17 13:27:14
+=================================================
+
+--- 1. PERFORMANCE ESTATÍSTICA ---
+ROC-AUC: 0.9979
+PR-AUC:  0.9221 (Foco em Precision-Recall)
+
+--- 2. DEMONSTRATIVO DE RESULTADOS (DRE) ---
+Limiar de Decisão Ideal: 0.92 (92%)
+Cenário Baseline (Total de Fraudes Reais): R$ 1,133,324.68
+--------------------------------------------------
+A RECEITA (EFICIÊNCIA DO MODELO):
+[+] Fraudes Interceptadas (TP): 1908 transações
+[+] Dinheiro Salvo: R$ 1,087,191.47
+--------------------------------------------------
+AS DESPESAS (CUSTO OPERACIONAL):
+[-] Fraudes não detectadas (FN): 237 (Perda: R$ 46,133.21)
+[-] Falsos Positivos (FP): 524 (Custo Fricção: R$ 26,200.00)
+CUSTO MÍNIMO DA OPERAÇÃO: R$ 72,333.21
+--------------------------------------------------
+VALOR LÍQUIDO GERADO PELO MODELO (ROI): R$ 1,060,991.47
+=================================================
