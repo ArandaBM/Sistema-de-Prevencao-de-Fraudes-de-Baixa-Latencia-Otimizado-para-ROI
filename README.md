@@ -36,15 +36,18 @@ graph LR
     F -.->|Assíncrono| I[(SQLite DB<br>production_logs)]:::db
 ```
 
-## 💼 1. O Desafio de Negócio (DRE)
+## 💼 1. O Desafio de Negócio: Foco no ROI e Experiência do Cliente
 
-Diferente de competições acadêmicas voltadas puramente para F1-Score ou ROC-AUC, decidi focar este projeto em como as fraudes transacionais (adquirência/emissão) são sentidas no mundo real: através do **Demonstrativo de Resultados do Exercício (DRE)**. Um modelo que visa zerar Falsos Negativos (fraude não detectada) muitas vezes eleva o Custo de Fricção no usuário legítimo (Falsos Positivos).
+No mundo corporativo real, um modelo de *Machine Learning* para prevenção a fraudes não deve ser avaliado apenas por métricas acadêmicas (como F1-Score ou ROC-AUC). Ele precisa resolver um problema crítico de negócios: **equilibrar o bloqueio de fraudes com a experiência do bom cliente.** 
 
-Desenvolvi a arquitetura de decisão deste motor utilizando uma calibração extrema do *Threshold* visando a **rentabilidade da operação**, não apenas a precisão matemática. Construí a matriz de custo penalizando financeiramente o modelo em **R$ 50,00 por cada Falso Positivo** (o custo estimado de fricção/insatisfação ao bloquear um cliente bom indevidamente).
+Bloquear uma transação fraudulenta é o esperado, mas bloquear um cliente genuíno (Falso Positivo) gera atrito, insatisfação e perda de receita futura. Por isso, a arquitetura de decisão deste projeto foi desenhada com foco no impacto financeiro, simulando os efeitos diretamente no **Demonstrativo de Resultados do Exercício (DRE)**.
 
-- **Limiar de Operação Otimizado (Threshold):** `0.88`
-- **Lucro Líquido Gerado:** **R$ 1.074.159,60** (Resultado estrito das fraudes interceptadas subtraindo os R$ 50,00 de cada fricção e os valores perdidos nos falsos negativos).
-- **Latência Crítica alcançada (SLA):** **~11ms**, totalmente compatível com esteiras autorizadoras assíncronas que exigem respostas sub-100ms.
+Criei uma matriz de custo que simula o cenário do mercado, penalizando o modelo em **R$ 50,00 para cada bloqueio indevido de um bom cliente**. O grande diferencial técnico aqui foi otimizar o ponto de decisão (*Threshold*) não para a precisão matemática, mas para **maximizar a rentabilidade líquida da operação**.
+
+**🏆 Resultados Alcançados:**
+- **Lucro Líquido Simulado:** **R$ 1.074.159,60** (Valor mitigado de fraudes, já descontando as multas de atrito e os tickets perdidos nas fraudes não detectadas).
+- **Latência Ultra-baixa (SLA):** **~11ms**. O motor responde instantaneamente, superando a exigência comum do mercado financeiro para autorizações sub-100ms.
+- **Ponto de Operação (Threshold):** Metodicamente calibrado em `0.88` para entregar o maior retorno financeiro possível, combinando agilidade com rentabilidade.
 
 ---
 
