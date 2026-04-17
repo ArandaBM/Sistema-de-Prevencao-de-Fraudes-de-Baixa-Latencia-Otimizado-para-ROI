@@ -1,5 +1,5 @@
 <div align="center">
-  <h1>🚀 Motor de Prevenção a Fraudes de Baixa Latência (Otimizado para ROI)</h1>
+  <h1>Sistema de Prevenção a Fraudes de Baixa Latência (Otimizado para ROI)</h1>
   <p><i>Projeto pessoal End-to-End focado no impacto financeiro, State Management in-memory e arquitetura de inferência crítica.</i></p>
 
   ![Python](https://img.shields.io/badge/Python-3.11-3776AB?style=for-the-badge&logo=python&logoColor=white)
