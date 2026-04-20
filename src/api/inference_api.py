@@ -17,11 +17,11 @@ os seguintes padrões críticos de MLOps que idealizei:
 Autor: Bruno (Desenvolvido inteiramente para meu Portfólio de Engenharia de ML)
 """
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, BackgroundTasks
 from pydantic import BaseModel, Field
 from datetime import datetime
 import numpy as np
-from catboost import CatBoostClassifier
+from catboost import CatBoostClassifier, Pool
 import sqlite3
 import os
 
@@ -44,9 +44,17 @@ def init_db():
                 decision TEXT,
                 fraud_probability REAL,
                 distance_km REAL,
-                micro_latency REAL
+                micro_latency REAL,
+                explicacao TEXT
             )
         ''')
+        
+        # Garante a retrocompatibilidade estrutural caso a tabela já exista
+        try:
+            cursor.execute('ALTER TABLE fraud_logs ADD COLUMN explicacao TEXT')
+        except sqlite3.OperationalError:
+            pass
+            
         conn.commit()
 
 init_db()
@@ -198,10 +206,49 @@ def extract_realtime_features(txn: TransactionRequest):
         raise HTTPException(status_code=500, detail=f"Falta uma coluna computada esperada pelo pipeline CatBoost: {e}")
 
 # =====================================================================
-# 5. ENDPOINT DE DECISÃO (A Porta da Frente)
+# 5. XAI DE BAIXA LATÊNCIA (Explainable AI em Background)
+# =====================================================================
+def background_explain_decision(features_array: list, transaction_id: int, feature_names: list):
+    """
+    Workgroup de Explainable AI (XAI) que aloquei em background.
+    Projetei esta rotina para calcular o impacto exato de cada variável na decisão atuando  
+    com Valores SHAP nativos do CatBoost, totalmente dissociado da thread principal.
+    Garante que não haja penalização na latência da API (O(1)). O analista de fraudes recebe
+    a evidência matemática do bloqueio mastigada direto no banco de dados relacional.
+    """
+    try:
+        # 1. Extração do impacto isolado de cada feature na decisão (SHAP)'
+        cat_indices = model.get_cat_feature_indices()
+        pool_data = Pool(data=[features_array], feature_names=feature_names, cat_features=cat_indices)
+        shap_values = model.get_feature_importance(
+            data=pool_data, 
+            type='ShapValues'
+        )[0][:-1] 
+        
+        # 2. Pareamento tático das features com seus respectivos pesos
+        feature_impact = list(zip(feature_names, shap_values))
+        
+        # 3. Ordenação para identificar os principais red flags (pesos positivos empurram pra fraude)
+        top_reasons = sorted(feature_impact, key=lambda x: x[1], reverse=True)[:3]
+        
+        # 4. Formatação human-readable para injeção na camada analítica
+        explicacao = ", ".join([f"{feat} (+{impact:.2f})" for feat, impact in top_reasons])
+        print(f"[XAI WORKER] Transação ID #{transaction_id} dissecada. Evidências: {explicacao}")
+        
+        # 5. Instanciação local e Thread-Safe do SQLite para gravar o parecer 
+        with sqlite3.connect(DB_FILE) as conn:
+            cursor = conn.cursor()
+            cursor.execute("UPDATE fraud_logs SET explicacao = ? WHERE id = ?", (explicacao, transaction_id))
+            conn.commit()
+            
+    except Exception as e:
+        print(f"[XAI WORKER] Falha crítica ao gerar as SHAP values: {e}")
+
+# =====================================================================
+# 6. ENDPOINT DE DECISÃO (A Porta da Frente)
 # =====================================================================
 @app.post("/predict", summary="In-Memory Scoring Engine", tags=["Inference"])
-async def predict_fraud(txn: TransactionRequest):
+async def predict_fraud(txn: TransactionRequest, background_tasks: BackgroundTasks):
     """
     Meu endpoint principal, programado para decidir instantaneamente o destino da transação.
     Ao receber o JSON do adquirente, a esteira ocorre na seguinte ordem:
@@ -238,7 +285,17 @@ async def predict_fraud(txn: TransactionRequest):
                 round(feature_vector[EXPECTED_FEATURES.index('distance_km')], 2),
                 feature_vector[EXPECTED_FEATURES.index('time_since_last_trans')]
             ))
+            transaction_id = cursor.lastrowid
             conn.commit()
+
+        # --- Delegando o XAI para os Workers em background (Sem bloquear o Return) ---
+        if decision == "BLOCK":
+            background_tasks.add_task(
+                background_explain_decision, 
+                feature_vector, 
+                transaction_id, 
+                EXPECTED_FEATURES
+            )
 
         return {
             "status": decision,

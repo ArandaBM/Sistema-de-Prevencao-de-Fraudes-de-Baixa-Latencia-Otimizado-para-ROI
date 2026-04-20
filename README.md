@@ -17,6 +17,7 @@ graph LR
     classDef model fill:#6c5ce7,stroke:#a29bfe,stroke-width:2px,color:#fff;
     classDef db fill:#e17055,stroke:#ffeaa7,stroke-width:2px,color:#fff;
     classDef block fill:#d63031,stroke:#ff7675,stroke-width:2px,color:#fff;
+    classDef xai fill:#e84393,stroke:#fd79a8,stroke-width:2px,color:#fff;
 
     A((Payload<br>JSON)):::input --> B[FastAPI + Pydantic<br>Validação]:::api
 
@@ -24,16 +25,19 @@ graph LR
         B --> C[Stateless Features<br>Haversine Distance]:::feat
         B --> D[(Stateful RAM<br>Micro-Latência / Velocity)]:::feat
         
-        C --> E{CatBoost<br>Motor de Inferência}:::model
+        C --> E{CatBoost<br>Sistema de Inferência}:::model
         D --> E
         
         E -->|Score 0.0 a 1.0| F[Decision Logic<br>Threshold: 0.88]:::api
     end
 
-    F -->|Risco < 0.88| G([APPROVE<br>~11ms SLA]):::feat
-    F -->|Risco >= 0.88| H([BLOCK<br>~11ms SLA]):::block
+    F -->|Risco < 0.88| G([APPROVE<br>~11 a 20ms SLA]):::feat
+    F -->|Risco >= 0.88| H([BLOCK<br>~11 a 20ms SLA]):::block
     
-    F -.->|Assíncrono| I[(SQLite DB<br>production_logs)]:::db
+    F -.->|INSERT Inicial| I[(SQLite DB<br>production_logs)]:::db
+    
+    H -.->|FastAPI BackgroundTask| J[[XAI Worker<br>CatBoost SHAP]]:::xai
+    J -.->|UPDATE<br>Razão da Fraude| I
 ```
 
 ## 💼 1. O Desafio de Negócio: Foco no ROI e Experiência do Cliente
@@ -46,7 +50,7 @@ Criei uma matriz de custo que simula o cenário do mercado, penalizando o modelo
 
 **🏆 Resultados Alcançados:**
 - **Lucro Líquido Simulado:** **R$ 1.074.159,60** (Valor mitigado de fraudes, já descontando as multas de atrito e os tickets perdidos nas fraudes não detectadas).
-- **Latência Ultra-baixa (SLA):** **~11ms**. O motor responde instantaneamente, superando a exigência comum do mercado financeiro para autorizações sub-100ms.
+- **Latência Ultra-baixa (SLA):** **~11ms a 20ms**. Em uma topologia pura e totalmente desacoplada, o sistema de inferência matemático bate a incrível marca de ~11ms. Pela característica *All-in-One* deste laboratório, mantive o módulo secundário de geração de atritos (XAI/SHAP) acoplado na mesma instância para facilitar o *Deploy*. Isso provoca micro-picos aceitáveis de até ~20ms devido ao CPU-bound, mas ainda assim esmaga completamente a exigência do mercado financeiro para autorizações limpas sub-100ms.
 - **Ponto de Operação (Threshold):** Metodicamente calibrado em `0.88` para entregar o maior retorno financeiro possível, combinando agilidade com rentabilidade.
 
 ---
@@ -65,6 +69,11 @@ Para treinar o algoritmo (CatBoost), criei manualmente as seguintes features:
 - **Spend Ratio:** Proporção gerada entre o ticket médio `amt` atual contrajetado à média histórica de 7 dias do próprio cliente.
 - **Geofísica Mapeada (Haversine):** Expurguei variáveis categóricas ruidosas e altamente sujeitas a Data Drift (CEP, Estado, Cidade). Em seu lugar, moldei operações ortodrômicas (*Haversine*) sendo executadas no pré-processamento. Elas convertem a lat/long entre o Cliente e o Lojista em uma matriz nítida de quilometragem.
 
+### Explainable AI (XAI) de Baixa Latência em Background
+Em sistemas financeiros contemporâneos, bloquear um comprador e não registrar nativamente a justificativa tática gera um atrito cego em auditorias. Para sanar isso, injetei de forma arquitetural o processamento dos **Valores SHAP** nativos do motor CatBoost acionados paralelamente via `BackgroundTasks` assíncronas do núcleo FastAPI. 
+
+O sistema destrincha os tensores de decisão para expor de forma humana os motivos de recusa (ex: *Velocity Tracking violado*), gravando silenciosamente as evidências na camada analítica. Embora rode acoplado disputando ciclos de CPU (*Monolith Convenience*) com as requisições principais de validação por escolhas de design restritas do portfólio, as respostas primárias de segurança de bloqueio continuam imaculadas bem abaixo do limitante severo de latência sub-30ms.
+
 ---
 
 ## 📂 3. Estrutura do Projeto
@@ -78,7 +87,8 @@ Para demonstrar maturidade arquitetural semelhante à de grandes operações de 
 ├── src/
 │   ├── api/                     # Código fechado e seguro para a containerização de Produção
 │   │   ├── inference_api.py     # O motor Uvicorn/FastAPI desenvolvido
-│   │   └── attack_simulation.py # Meu script gerador de botnet/stress test
+│   │   ├── attack_simulation.py # Meu script gerador de botnet/stress test
+│   │   └── attack_simulation_df_test.py # Pipeline nativo para simular tráfego Dataframe Stream-like
 │   └── experiments/             # Meu ambiente de pesquisa (onde ocorreu a feitiçaria!)
 │       ├── core/                # Lib central que estruturei (processing.py, reporter.py)
 │       ├── notebooks/           # EDA isolado (Evitando arquivos binários na raiz)
@@ -111,11 +121,15 @@ docker run -p 8000:8000 fraud-engine-api:latest
 
 ---
 
-## 🔁 5. Visão de Futuro (Latência de Rótulo)
+## 🔁 5. Limitações e Trabalhos Futuros
 
+### CPU-Bound vs I/O-Bound (XAI sob Estresse)
+Foi observado em testes de estresse massivo que a geração assíncrona de XAI (SHAP) usando `BackgroundTasks` elevou a latência P99 de ~11ms para ~20ms. Esse gap temporário deve-se à competição por CPU (Context Switching) sob alta carga, já que o SHAP tem natureza algorítmica intensa. Em um cenário de produção em larga escala, a arquitetura ideal desacoplaria a geração de explicabilidade para um **Worker totalmente separado** (orquestrado via Celery/Redis ou Kafka), liberando a infraestrutura da API principal exclusivamente para inferência de baixíssima latência.
+
+### Latência de Rótulo (Feedback Loop)
 Problemas de detecção lidam contra o que conceituamos em engenharia de fraudes de **Latência de Ground Truth** (ou *Chargebacks*). Em cenários reais, descobrimos que nossa predição de ontem falhou apenas quando a fatura do cliente é contestada 45 dias depois.
 
 Em termos de arquitetura e evolução do portfólio, estruturei e anexei um **Banco SQLite** (`production_logs.db`). Sua função é atuar como uma *Shadow Database* na API:
 1. Ele loga toda decisão síncrona junto à probabilidade crua.
 2. Permitiria arquitetar no futuro uma rotina assíncrona (como Airflow) para conciliar o status "D-0" da minha API contra o "D-45" da MasterCard/Visa.
-3. Este banco é o coração que possibilita governanças avandadas de retreinamento contínuo (CT), acionando o pipeline de deploy estilo **Campeão vs. Desafiante**.
+3. Este banco é o coração que possibilita governanças avançadas de retreinamento contínuo (CT), acionando o pipeline de deploy estilo **Campeão vs. Desafiante**.
