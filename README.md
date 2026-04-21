@@ -61,7 +61,21 @@ Criei uma matriz de custo que simula o cenário do mercado, penalizando o modelo
 
 ---
 
-## 🏗️ 2. Arquitetura e Engenharia de Atributos
+## 📊 2. O Dataset e a Métrica de Otimização (PRAUC)
+
+### O Paradoxo do Desbalanceamento
+Utilizei a base de dados pública [Kaggle: Fraud Detection](https://www.kaggle.com/datasets/kartik2112/fraud-detection/data), que simula transações de cartões de crédito. Como é padrão na indústria de pagamentos, lidamos com um cenário de **extremo desbalanceamento de classes**, onde a esmagadora maioria das transações é legítima e as fraudes representam uma fração minúscula do volume total.
+
+Nesse contexto analítico, métricas globais tornam-se inócuas. A Acurácia é inútil (um modelo "preguiçoso" que simplesmente aprove 100% das transações terá quase 99.5% de acurácia, mas mitigará R$ 0 de fraudes). Mais crítico do que isso: a tão ensinada métrica **ROC-AUC torna-se altamente ilusória**. Como a curva ROC engloba a Taxa de Falsos Positivos puxada pelo gigantesco denominador de Verdadeiros Negativos (os bons clientes no escopo), essa montanha subjacente de validações benignas mascara a dor real do volume bruto inaceitável de alarmes falsos, entregando uma falsa sensação de performance ao Cientista de Dados e penalizando o negócio na ponta.
+
+### A Escolha Deliberada: PRAUC
+Para avaliar a separação vetorial do modelo estatisticamente, antes de eu traduzir seus thresholds para a linguagem bruta de matriz de custos que o negócio entende em Reais (R$), ancorei a matemática em torno da **PRAUC (Precision-Recall Area Under Curve)**. 
+
+A abordagem via curva de Precisão-Recall ilumina exclusivamente a classe minoritária. Ela nos policia metodicamente sobre nossa real eficácia técnica de reaver a perda financeira (*Recall*), enquanto nos veta agressivamente de espalharmos punições desgovernadas bloqueando clientes limpos em falso (*Precision*). Em sistemas antifraude assíncronos e submersos nesse oceano de classes desbalanceadas, modelar visando o limite teto da PRAUC garante que estou desenvolvendo detectores intrinsecamente silenciosos para clientes genuínos antes de partir para a agressiva calibração de lucros de negócios (ROI).
+
+---
+
+## 🏗️ 3. Arquitetura e Engenharia de Atributos
 
 Como operações reais de Machine Learning de baixa latência excluem pré-processamentos pesados envolvendo pipelines do Pandas, decidi elevar o desafio de engenharia traduzindo heurísticas temporais complexas para memória bruta matemática.
 
@@ -82,7 +96,7 @@ O sistema destrincha os tensores de decisão para expor de forma humana os motiv
 
 ---
 
-## 📂 3. Estrutura do Projeto
+## 📂 4. Estrutura do Projeto
 
 Para demonstrar maturidade arquitetural semelhante à de grandes operações de MLOps, separei meu repositório isolando completamente o ambiente de pesquisa (`experiments/`) das esteiras de produção (`api/`).
 
@@ -106,11 +120,11 @@ Para demonstrar maturidade arquitetural semelhante à de grandes operações de 
 └── requirements-dev.txt         # Pacotes de pesquisa que chamam recursos produtivos internamente
 ```
 
-*(Obs: Utilizei a base de dados pública [Kaggle: Fraud Detection](https://www.kaggle.com/datasets/kartik2112/fraud-detection/data). Os datasets brutos são baixados e extraídos automaticamente na pasta oculta `data/` pelo meu script core no ambiente local).*
+*(Obs: Os datasets brutos baixados do pipeline, conforme citados na seção 2, são extraídos e controlados automaticamente na pasta oculta `data/` pelos meus scripts base no laboratório de pesquisa).*
 
 ---
 
-## 🐋 4. MLOps e Deploy
+## 🐋 5. MLOps e Deploy
 
 Aloquei 100% da inteligência da API em uma Imagem Docker estritamente focada em leveza. O segredo dessa estrutura foi criar um `.dockerignore` robusto que cega o Docker durante o *build* para os scripts soltos do meu laboratório. 
 
@@ -127,7 +141,7 @@ docker run -p 8000:8000 fraud-engine-api:latest
 
 ---
 
-## 🔁 5. Limitações e Trabalhos Futuros
+## 🔁 6. Limitações e Trabalhos Futuros
 
 ### CPU-Bound vs I/O-Bound (XAI sob Estresse)
 Foi observado em testes de estresse massivo que a geração assíncrona de XAI (SHAP) usando `BackgroundTasks` elevou a latência P99 de ~11ms para ~20ms. Esse gap temporário deve-se à competição por CPU (Context Switching) sob alta carga, já que o SHAP tem natureza algorítmica intensa. Em um cenário de produção em larga escala, a arquitetura ideal desacoplaria a geração de explicabilidade para um **Worker totalmente separado** (orquestrado via Celery/Redis ou Kafka), liberando a infraestrutura da API principal exclusivamente para inferência de baixíssima latência.
