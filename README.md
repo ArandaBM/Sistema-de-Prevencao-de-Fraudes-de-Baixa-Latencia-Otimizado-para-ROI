@@ -53,6 +53,12 @@ Criei uma matriz de custo que simula o cenário do mercado, penalizando o modelo
 - **Latência Ultra-baixa (SLA):** **~11ms a 20ms**. Em uma topologia pura e totalmente desacoplada, o sistema de inferência matemático bate a incrível marca de ~11ms. Pela característica *All-in-One* deste laboratório, mantive o módulo secundário de geração de atritos (XAI/SHAP) acoplado na mesma instância para facilitar o *Deploy*. Isso provoca micro-picos aceitáveis de até ~20ms devido ao CPU-bound, mas ainda assim esmaga completamente a exigência do mercado financeiro para autorizações limpas sub-100ms.
 - **Ponto de Operação (Threshold):** Metodicamente calibrado em `0.88` para entregar o maior retorno financeiro possível, combinando agilidade com rentabilidade.
 
+<div align="center">
+  <img src="docs/roi_optimization_plot.png" alt="Otimização de Limiar de Decisão por ROI" width="700"/>
+  <br>
+  <i>Gráfico gerado automaticamente pelo módulo de reporte: calibração que atinge o teto do ROI.</i>
+</div>
+
 ---
 
 ## 🏗️ 2. Arquitetura e Engenharia de Atributos

@@ -13,6 +13,7 @@ O foco da minha calibração matemática engloba:
 
 import os
 import numpy as np
+import matplotlib.pyplot as plt
 from datetime import datetime
 from typing import Dict, Any
 from sklearn.metrics import roc_auc_score, average_precision_score
@@ -48,6 +49,8 @@ def evaluate_and_report(
     best_metrics: Dict[str, Any] = {}
     total_fraud_amt = np.sum(amt_array[y_true == 1])
     
+    rois = []
+    
     for thresh in thresholds:
         y_pred = (y_probs >= thresh).astype(int)
         
@@ -64,6 +67,9 @@ def evaluate_and_report(
         money_saved = np.sum(amt_array[tp_mask])
         
         total_cost = fraud_loss + friction_cost
+        
+        net_value_thresh = money_saved - friction_cost
+        rois.append(net_value_thresh)
         
         if total_cost < min_total_cost:
             min_total_cost = total_cost
@@ -83,6 +89,33 @@ def evaluate_and_report(
     report_path = f"reports/{experiment_name}_{timestamp}.txt"
     
     net_value = best_metrics['money_saved'] - best_metrics['friction_cost']
+    
+    # 4. Geração do Gráfico de ROI
+    plt.figure(figsize=(10, 6))
+    plt.plot(thresholds, rois, label='ROI (Valor Líquido)', color='#1f77b4', linewidth=2)
+    
+    # Destacar o melhor ponto de ROI
+    max_roi = np.max(rois)
+    plt.axvline(x=best_threshold, color='red', linestyle='--', label=f'Melhor Limiar: {best_threshold:.2f}')
+    plt.scatter([best_threshold], [max_roi], color='red', s=100, zorder=5)
+    
+    plt.annotate(f'Max ROI:\nR$ {max_roi:,.2f}', 
+                 xy=(best_threshold, max_roi), 
+                 xytext=(-80, -50) if best_threshold > 0.5 else (20, -50),
+                 textcoords='offset points',
+                 arrowprops=dict(facecolor='black', shrink=0.05, width=1.5, headwidth=8),
+                 fontsize=10,
+                 bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="gray", alpha=0.9))
+    
+    plt.title(f'Otimização de Limiar de Decisão por ROI - {experiment_name}')
+    plt.xlabel('Limiar de Decisão (Threshold)')
+    plt.ylabel('ROI (R$)')
+    plt.grid(True, linestyle='--', alpha=0.7)
+    plt.legend()
+    
+    plot_path = f"reports/{experiment_name}_{timestamp}_roi.png"
+    plt.savefig(plot_path, bbox_inches='tight', dpi=300)
+    plt.close()
     
     with open(report_path, 'w', encoding='utf-8') as f:
         lines = [
