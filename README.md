@@ -61,17 +61,17 @@ Criei uma matriz de custo que simula o cenário do mercado, penalizando o modelo
 
 ---
 
-## 📊 2. O Dataset e a Métrica de Otimização (PRAUC)
+## 📊 2. O Dataset e a Escolha da Métrica (PRAUC)
 
-### O Paradoxo do Desbalanceamento
-Utilizei a base de dados pública [Kaggle: Fraud Detection](https://www.kaggle.com/datasets/kartik2112/fraud-detection/data), que simula transações de cartões de crédito. Como é padrão na indústria de pagamentos, lidamos com um cenário de **extremo desbalanceamento de classes**, onde a esmagadora maioria das transações é legítima e as fraudes representam uma fração minúscula do volume total.
+### O Problema do Desbalanceamento
+O modelo foi treinado utilizando a base de dados pública [Kaggle: Fraud Detection](https://www.kaggle.com/datasets/kartik2112/fraud-detection/data), que contém transações simuladas de cartões de crédito. Como é comum no mercado financeiro, trata-se de um cenário **altamente desbalanceado**, onde a grande maioria das transações é legítima e as fraudes representam uma parcela mínima (geralmente inferior a 0.5%).
 
-Nesse contexto analítico, métricas globais tornam-se inócuas. A Acurácia é inútil (um modelo "preguiçoso" que simplesmente aprove 100% das transações terá quase 99.5% de acurácia, mas mitigará R$ 0 de fraudes). Mais crítico do que isso: a tão ensinada métrica **ROC-AUC torna-se altamente ilusória**. Como a curva ROC engloba a Taxa de Falsos Positivos puxada pelo gigantesco denominador de Verdadeiros Negativos (os bons clientes no escopo), essa montanha subjacente de validações benignas mascara a dor real do volume bruto inaceitável de alarmes falsos, entregando uma falsa sensação de performance ao Cientista de Dados e penalizando o negócio na ponta.
+Em problemas com essa característica, usar métricas avaliativas comuns pode mascarar a realidade. A Acurácia é irrelevante, pois um modelo que simplesmente decida aprovar tudo ainda teria mais de 99% de acurácia. A métrica **ROC-AUC também é problemática**: como o volume de clientes legítimos (verdadeiros negativos) é infinitamente maior, ele distorce a taxa de falsos positivos. Isso passa uma falsa impressão de que o modelo está performando bem, quando na verdade ele pode estar reprovando muitos clientes bons de forma silenciosa.
 
-### A Escolha Deliberada: PRAUC
-Para avaliar a separação vetorial do modelo estatisticamente, antes de eu traduzir seus thresholds para a linguagem bruta de matriz de custos que o negócio entende em Reais (R$), ancorei a matemática em torno da **PRAUC (Precision-Recall Area Under Curve)**. 
+### A Escolha pelo PRAUC
+Para avaliar estatisticamente a performance do modelo, adotei a métrica **PRAUC (Precision-Recall Area Under Curve)** em substituição ao clássico ROC-AUC.
 
-A abordagem via curva de Precisão-Recall ilumina exclusivamente a classe minoritária. Ela nos policia metodicamente sobre nossa real eficácia técnica de reaver a perda financeira (*Recall*), enquanto nos veta agressivamente de espalharmos punições desgovernadas bloqueando clientes limpos em falso (*Precision*). Em sistemas antifraude assíncronos e submersos nesse oceano de classes desbalanceadas, modelar visando o limite teto da PRAUC garante que estou desenvolvendo detectores intrinsecamente silenciosos para clientes genuínos antes de partir para a agressiva calibração de lucros de negócios (ROI).
+A curva Precision-Recall foca exclusivamente na classe que realmente importa: a fraude. Ela mede o equilíbrio entre encontrar o maior número possível de fraudes (*Recall*) e garantir que, ao bloquear uma transação, o modelo esteja correto (*Precision*). Otimizar o PRAUC minimiza agressivamente os falsos positivos (clientes que sofreriam atrito à toa). Essa foi a métrica de transição ideal que adotei para nivelar a qualidade matemática do modelo antes de aplicar as restrições finais de regras financeiras orientadas por ROI.
 
 ---
 
